@@ -8,17 +8,27 @@ Built from: https://gist.github.com/darkr4y/761d7536100d2124f5d0db36d4890109
 import os
 import sys
 import argparse
-import socketserver
 import cmd
 from threading import Thread
 import subprocess
 import time
+import logging
+from datetime import datetime
 try:
     import http.server as server
 except ImportError:
     # Handle Python 2.x
     import SimpleHTTPServer as server
 
+# Set up logging to a file
+log_file = f"hosting_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log"
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(message)s",
+    handlers=[
+        logging.FileHandler(log_file),
+    ]
+)
 
 # gather vpn info
 try:
@@ -45,6 +55,7 @@ except subprocess.CalledProcessError:
             _VPN_IP = line.split()[1]
 print(f"VPN: {_VPN_STATUS}")
 print(f"IP : {_VPN_IP}")
+
 
 # extend httpserver class for uploads
 class HTTPRequestHandler(server.SimpleHTTPRequestHandler):
@@ -73,15 +84,18 @@ class HTTPRequestHandler(server.SimpleHTTPRequestHandler):
         reply_body = 'Saved "%s"\n' % filename
         self.wfile.write(reply_body.encode('utf-8'))
 
+    def log_message(self, format, *args):
+        # Redirect output ot the logger isntead of printing to console
+        logging.info(format % args)
 
 # Command-line interface class
 class CLI(cmd.Cmd):
     intro = 'Welcome to the file search CLI. Type help or ? to list commands.'
     prompt = '>> '
 
-    def __init__(self):
+    def __init__(self, port):
         super().__init__()
-        self._PORT = 8000
+        self._PORT = port
 
     # search for file
     def do_search(self, arg):
@@ -146,6 +160,25 @@ class CLI(cmd.Cmd):
     def do_u(self,arg):
         return self.do_uploads(arg)
 
+    # show logs for http server
+    def do_logs(self, arg):
+        "Show the output from the http server.\nUsage: logs [NUMLINES]\n\tDefault number of lines: 5"
+        args = arg.split()
+        NUM_LINES = int(args[0]) if len(args) > 0 else 5
+        
+        # read last n lines from log file
+        try:
+            with open(log_file, 'r') as file:
+                lines = file.readlines()
+                for line in lines[-NUM_LINES:]:
+                    print(line.strip())
+        except FileNotFoundError:
+            print("Log file not found.")
+        return
+    
+    # alias for logs
+    def do_l(self, arg):
+        return self.do_logs(arg)
 
     # todo - run msfvenom and place revshell in revshells dir
 
@@ -160,9 +193,7 @@ class CLI(cmd.Cmd):
 def start_http_server(directory, port):
     os.chdir(directory)
     server.test(HandlerClass=HTTPRequestHandler, port=port)
-#    handler = server.HTTPRequestHandler
-#    httpd = socketserver.TCPServer(("", port), handler)
-#    httpd.serve_forever()
+    
 
 # Main function to handle arguments and start the servers
 def main():
@@ -181,8 +212,7 @@ def main():
 
     # Start the CLI
     time.sleep(0.25) # wait for server to start
-    cli = CLI()
-    cli._PORT = args.port
+    cli = CLI(args.port)
     cli.cmdloop()
 
 if __name__ == '__main__':
