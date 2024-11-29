@@ -3,9 +3,9 @@ This is a simple wrapper for Python's http.server module. It is modified to incl
 
 Main help:
 ```
-python3 hosting.py --help
+$ python3 hosting.py --help
 VPN: OFF
-IP : 172.30.20.207
+IP : 0.0.0.0
 usage: hosting.py [-h] [-p PORT] [-d DIRECTORY]
 
 hosting script
@@ -19,9 +19,9 @@ options:
 
 Starting and CLI help:
 ```
- python3 hosting.py
+$ python3 hosting.py
 VPN: OFF
-IP : 10.10.10.10
+IP : 0.0.0.0
 HTTP server started at http://localhost:8000
 
 Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000/) ...
