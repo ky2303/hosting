@@ -14,11 +14,8 @@ import subprocess
 import time
 import logging
 from datetime import datetime
-try:
-    import http.server as server
-except ImportError:
-    # Handle Python 2.x
-    import SimpleHTTPServer as server
+import http.server as server
+
 
 # Set up logging to a file
 log_file = f"hosting_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log"
@@ -93,9 +90,10 @@ class CLI(cmd.Cmd):
     intro = 'Welcome to the file search CLI. Type help or ? to list commands.'
     prompt = '>> '
 
-    def __init__(self, port):
+    def __init__(self, port, log):
         super().__init__()
         self._PORT = port
+        self._LOG = log
 
     # search for file
     def do_search(self, arg):
@@ -183,9 +181,14 @@ class CLI(cmd.Cmd):
     # todo - run msfvenom and place revshell in revshells dir
 
     # exit
+    def exit(self):
+        if not (self._LOG):
+            os.remove(log_file)
+        print("Exiting file search CLI.")
+
     def do_exit(self, arg):
         "Exit the CLI."
-        print("Exiting file search CLI.")
+        self.exit()
         return True
 
 
@@ -201,6 +204,7 @@ def main():
     parser = argparse.ArgumentParser(description="hosting script")
     parser.add_argument('-p', '--port', type=int, default=8000, help="Port for the HTTP server (default: 8000)")
     parser.add_argument('-d', '--directory', type=str, default=os.getcwd(), help="Directory for the HTTP server root (default: current directory)")
+    parser.add_argument('-l', '--log', type=bool, default=False, help="Save logs (default: False)")
 
     args = parser.parse_args()
     
@@ -212,9 +216,8 @@ def main():
 
     # Start the CLI
     time.sleep(0.25) # wait for server to start
-    cli = CLI(args.port)
+    cli = CLI(args.port, args.log)
     cli.cmdloop()
 
 if __name__ == '__main__':
     main()
-
